@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@my/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/yargs": "17.0.33",
+    "@typescript/native-preview": "catalog:"
+  },
+  "dependencies": {
+    "@my/core": "workspace:*",
+    "yargs": "^18.0.0"
+  }
+}

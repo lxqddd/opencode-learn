@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@my/core",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@typescript/native-preview": "catalog:"
+  }
+}
