@@ -10,6 +10,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "effect": "catalog:"
+  },
   "devDependencies": {
     "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:"
