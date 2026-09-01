@@ -3,7 +3,10 @@ import { ChatError, streamChat } from "../src/llm"
 
 describe("streamChat", () => {
   it("throws missing-key when no apiKey", async () => {
-    const gen = streamChat({ provider: "openai", model: "gpt-4o", temperature: 0.7 }, "hi")
+    const gen = streamChat(
+      { provider: "openai", model: "gpt-4o", temperature: 0.7 },
+      [{ role: "user", content: "hi" }],
+    )
     const drain = (async () => {
       let text = ""
       for await (const t of gen) text += t

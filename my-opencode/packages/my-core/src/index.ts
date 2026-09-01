@@ -1,2 +1,5 @@
 export * as Config from "./config"
 export * as LLM from "./llm"
+export * as DB from "./db/client"
+export * as SessionRepository from "./db/session-repository"
+export * as Session from "./session/service"

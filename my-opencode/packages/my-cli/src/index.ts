@@ -5,6 +5,7 @@ import { ask } from "./cmd/ask"
 import { config } from "./cmd/config"
 import { models } from "./cmd/models"
 import { auth } from "./cmd/auth"
+import { sessionList } from "./cmd/session"
 
 await Config.loadDotEnv()
 
@@ -17,10 +18,11 @@ yargs(hideBin(process.argv))
       y
         .positional("prompt", { demandOption: true, type: "string", describe: "the prompt" })
         .option("provider", { type: "string", describe: "provider to use" })
-        .option("model", { type: "string", describe: "model to use" }),
+        .option("model", { type: "string", describe: "model to use" })
+        .option("resume", { type: "string", describe: "session id to resume" }),
     async (args) => {
       const overrides = { provider: args.provider, model: args.model }
-      await ask(overrides, args.prompt)
+      await ask(overrides, args.prompt, { resume: args.resume })
     },
   )
   .command(
@@ -46,6 +48,11 @@ yargs(hideBin(process.argv))
     async (args) => {
       await auth({ provider: args.provider, model: args.model })
     },
+  )
+  .command(
+    "session",
+    "session management",
+    (y) => y.command("list", "list sessions", async () => await sessionList()),
   )
   .demandCommand()
   .argv

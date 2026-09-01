@@ -23,15 +23,20 @@ function createProvider(config: Config) {
   return createOpenAICompatible({ baseURL, apiKey: requireKey(config), name: config.provider })
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
 export async function* streamChat(
   config: Config,
-  prompt: string,
+  messages: ChatMessage[],
 ): AsyncGenerator<string, void, unknown> {
   const provider = createProvider(config)
   try {
     const result = streamText({
       model: provider(config.model),
-      prompt,
+      messages,
       temperature: config.temperature,
     })
     for await (const part of result.textStream) {

@@ -188,8 +188,9 @@ my-cli ask "你好"
 
 **验收标准**
 
-- [ ] 重启进程后 `--resume` 续聊，上下文完整
-- [ ] 多项目目录隔离（同目录才续得上）
+- [x] 重启进程后 `--resume` 续聊，上下文完整（实测:核心记忆可跨进程恢复）
+- [x] 多项目目录隔离（realpath 归一，findByDirectory 定位"当前目录最近会话"）
+- [x] 测试：repo CRUD / 级联删除 / findLatest（发现并修复 SQLite `foreign_keys=OFF`、同 ms 排序不稳定 2 个真 bug）
 
 ### M3 · 工具系统 + 权限 + Agent 循环（2.5 周，项目核心）
 

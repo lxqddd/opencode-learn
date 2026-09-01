@@ -9,11 +9,16 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./llm": "./src/llm/index.ts"
+    "./llm": "./src/llm/index.ts",
+    "./db": "./src/db/client.ts",
+    "./db/session-repository": "./src/db/session-repository.ts",
+    "./session": "./src/session/service.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "catalog:",
-    "ai": "catalog:"
+    "ai": "catalog:",
+    "drizzle-orm": "catalog:",
+    "ulid": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
