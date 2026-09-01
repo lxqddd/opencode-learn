@@ -1,5 +1,5 @@
 import { Config } from "@my/core"
-import { streamChat } from "@my/core/llm"
+import { ChatError, streamChat } from "@my/core/llm"
 
 export const ask = async (overrides: Partial<Config.Overrides> = {}, prompt: string) => {
   const c = await Config.configLoader.resolve(overrides)
@@ -9,15 +9,16 @@ export const ask = async (overrides: Partial<Config.Overrides> = {}, prompt: str
       process.stdout.write(token)
     }
   } catch (error) {
-    const e = error as { kind?: string; message?: string }
-    if (e.kind === "missing-key") {
-      console.error("\n[错误] 缺少 API key:请在 .env 中设置 OPENAI_API_KEY")
-    } else if (e.kind === "model-not-found") {
-      console.error(`\n[错误] 模型不存在:${c.model}。检查 model 名称或改用 my-cli models 查看可用模型`)
-    } else if (e.kind === "request-failed") {
-      console.error(`\n[错误] 请求失败:${e.message ?? "未知原因"}`)
+    if (error instanceof ChatError) {
+      const hints: Record<string, string> = {
+        "missing-key": "请在 .env 中设置 OPENAI_API_KEY",
+        "model-not-found": `检查 model 名称或运行 my-cli models 查看可用模型`,
+        "auth-failed": `检查 .env 中的 key 与 baseURL (${c.baseURL ?? "http://api.openai.com/v1"})`,
+        "request-failed": "请检查网络/端点配置",
+      }
+      console.error(`\n[错误] ${error.kind}: ${hints[error.kind] ?? ""} ${error.message}`)
     } else {
-      console.error(`\n[错误] ${(error as Error).message ?? String(error)}`)
+      console.error(`\n[错误] ${(error as Error)?.message ?? String(error)}`)
     }
   }
   process.stdout.write("\n")

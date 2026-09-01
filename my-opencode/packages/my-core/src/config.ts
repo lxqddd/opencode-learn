@@ -24,6 +24,9 @@ export interface ConfigLoader {
 
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined)
 
+const defined = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
+  Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>
+
 export async function loadDotEnv(env: Record<string, string | undefined> = process.env): Promise<boolean> {
   let dir = process.cwd()
   while (true) {
@@ -101,10 +104,7 @@ export class FileConfigLoader implements ConfigLoader {
   async resolve(overrides: Overrides = {}): Promise<Config> {
     const found = await this.findFileConfig()
     this.sourcePath = found.path
-    const defined = Object.fromEntries(
-      Object.entries(overrides).filter(([, value]) => value !== undefined),
-    ) as Overrides
-    return { ...defaults, ...found.config, ...this.fromEnv(), ...defined }
+    return { ...defaults, ...defined(found.config), ...defined(this.fromEnv()), ...defined(overrides) }
   }
 }
 

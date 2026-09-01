@@ -165,8 +165,10 @@ my-cli ask "你好"
 
 **验收标准**
 
-- [ ] 换一个 model/key 均可用
-- [ ] 配置错误（缺 key / 未知 model）有明确 Human-readable 报错
+- [x] 换一个 model/key 均可用（实测：MiniMax-M3 流式问答通过）
+- [x] 配置错误（缺 key / 未知 model）有明确 Human-readable 报错
+- [x] 新增 `my-cli models` / `my-cli auth`（列出模型、认证校验）
+- [x] 测试：config 合并优先级 + streamChat 缺 key（发现并修复"undefined 覆盖 defaults"bug）
 
 ### M2 · 会话持久化（1.5 周）
 
