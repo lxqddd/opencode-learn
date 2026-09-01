@@ -1,21 +1,22 @@
 # OpenCode 复刻学习路线
 
-> 目标：从 0 到 1，用同款技术栈（Bun + TypeScript + Effect 4 + SolidJS/opentui + Drizzle/SQLite + Vercel AI SDK）手动实现一个与 OpenCode 架构同构的 AI 编程代理（最小可运行版本）。
+> 目标：从 0 到 1，用简化实现（Bun + TypeScript + async/await + Drizzle/SQLite + AI SDK）实现一个与 OpenCode **架构同构**的 AI 编程代理（最小可运行版本）。
+>
+> 原则：**只学习架构思想与实现思路，不复制其技术选型**。opencode 使用的 Effect / SolidJS / opentui 等框架仅作为阅读参考（会读即可），本项目一律用 async/await 与普通 TypeScript 表达。
 >
 > 参考源码：`./sourceCode/`（不参与运行，仅作参考答案）
-> 节奏假设：每天 2 小时，一个完整周末 ≈ 2.5 天；总时长 12~16 周。
-> 原则：**25% 读源码 + 75% 自己写**，卡住才翻对应源码，不照抄。
+> 节奏假设：每天 2 小时，一个完整周末 ≈ 2.5 天；总时长 10~14 周。
 
 ---
 
-## 0. 复刻边界（确定做什么、不做什幺）
+## 0. 复刻边界（确定做什么、不做什么）
 
 ### 必做（与 OpenCode 架构同构的最小集合）
 
 | 模块 | 功能 | 对应源码 |
 |---|---|---|
 | CLI | ask/demo 命令、帮助、配置读取 | `sourceCode/packages/opencode/src/cli/` |
-| 配置 | opencode.json + .env 凭据，Schema 运行时校验 | `sourceCode/packages/core/src/config/` |
+| 配置 | opencode.json + .env 凭据，结构定义与校验 | `sourceCode/packages/core/src/config/` |
 | Provider | 1~2 个 LLM provider（openai-compatible + anthropic） | `sourceCode/packages/llm/src/providers/` |
 | 会话 | Session/Message 持久化、恢复、多项目/多 worktree | `sourceCode/packages/core/src/session/` |
 | 工具 | read / write / edit / bash / grep 注册表 | `sourceCode/packages/core/src/tool/` |
@@ -67,43 +68,36 @@ my-cli ask "你好"
 - [ ] `my-cli --help` 正常；`--model`、`--provider` 参数生效
 - [ ] 配置来源优先级：CLI 参数 > .env > opencode.json
 
-### W2 · Effect 4（重点中的重点，2 周消化）
+### W2 · Effect 阅读速成（1 天，只读不写）
 
-> Effect 是这套源码的语言。学不会 Effect，后面的源码几乎无法读懂。顺序很重要。
+> 本项目不写 Effect。但 481 个源码文件直接 import 它，**看不懂 Effect 就读不懂源码**。所以只用 1 天掌握"读它"所需的符号翻译表。
 
-**学什么（按此顺序）**
+**读什么**（1 天速查手册，够用即止）
 
-1. `Effect<Success, Error, Requirements>`：每个函数都是一个"可组合的依赖计算"，**惰性执行**
-2. `Effect.gen` / `yield*`：顺序组合；`Effect.gen(function* () {...})` 的优雅写法
-3. `Context.Tag` + `Layer`：依赖注入（服务接口 + 提供实现 + 层级组合）
-4. `Schema`：运行时校验 + 类型导出（`Schema.decodeUnknownOption` 等人性化入口）
-5. `Ref` / `Queue` / `PubSub`：共享状态、事件流
-6. `Scope`（资源管理）、`Exit`（错误）、`Config`（环境配置）
-7. `effect/unstable/http`：`HttpRouter` / `HttpServer` / 过滤器（M4 要用）
-8. `Effect.gen` 注意事项：服务先 bind 到变量再用；不要嵌套 `yield* (yield* Foo.Service).bar()`（`AGENTS.md` 明确禁止）
+| 源码写法 | 等价于（脑内翻译） |
+|---|---|
+| `Effect<A, E, R>` | 类型化 Promise：`A` 成功值 / `E` 错误 / `R` 依赖 |
+| `Effect.gen(function*(){ yield* x })` | async 函数 + await：`yield*` ≈ `await` |
+| `Effect.runPromise(e)` | 真正执行（我们 CLI 里用） |
+| `Effect.promise(() => p)` | 原生 Promise 桥接 |
+| `class S extends Context.Service<S, Iface>()("id") {}` | 依赖注入"服务品牌名 + 接口" |
+| `Layer.succeed / Layer.effect` | 依赖注入容器里"实现提供者" |
+| `Service.use(fn)` 或 `yield* Service` | `await` 拿到服务实例调用方法 |
+| `Schema.decodeUnknownOption` | "unknown 输入校验转型，失败返回 null" |
 
-**练手产出**
-
-- 用 Layer 注入的 "todo CLI"：增删改查存 JSON，全部走 Effect。含 Schema 校验 + Error 分支
-- Service A → Service B 的 Layer 组合
-
-**读源码**
-
-- `sourceCode/packages/core/src/config/` — 看 Effect 代码的组织风格（文件内 `export * as ConfigAgent` 自导出模式）
-- `sourceCode/packages/core/src/provider.ts` — 典型的 Service Tag + Layer 结构
-- `sourceCode/AGENTS.md` — 直接从"Style Guide"学团队的 Effect 写法约定（好过纯看文档）
+**不需要学的**：`Ref/Scope/Fiber/Queue`、占位、错层组合——**读到频次再说**。读 session/权限模块时可回来单查。
 
 **验收标准**
 
-- [ ] 能徒手写出一个 `Layer` 注入两层的服务
-- [ ] 看懂 `Schema.decodeUnknownOption`、`Effect.gen` 的 T 类型参数
+- [ ] 翻开 `sourceCode/packages/core/src/config.ts:133` 能说出 `Service/Layer` 各自是什么
+- [ ] 读 `specs/v2/session.md` 无语法感障碍（内部 `yield* Session.Service` 不再是天书）
 
 ### W3 · Drizzle + SQLite
 
 **学什么**
 
 - drizzle-orm + drizzle-kit：`sqliteTable`、migration 生成、query/insert
-- effect-sqlite-node 与 drizzle 的适配（opencode 自研 `@opencode-ai/effect-drizzle-sqlite`，学习时直接读它）
+- Bun 内置 `bun:sqlite` / 或 drizzle 官方 sqlite 驱动（不读 self 胶水层，直接用公开 api）
 - Schema 命名约定：字段用 snake_case，列名不需要再定义字符串（`AGENTS.md` Section Schema Definitions）
 
 **练手产出**
@@ -115,38 +109,33 @@ my-cli ask "你好"
 
 - `sourceCode/packages/core/src/database/`（DB 初始化 + 运行事务 + migration 流程）
 - `sourceCode/specs/storage/remove-opencode-db.md`（理解"为什么持久化长这样"）
-- `sourceCode/packages/effect-drizzle-sqlite/`（drizzle 与 Effect 的胶水层）
+- `sourceCode/packages/effect-drizzle-sqlite/`（**跳过胶水层细节**，只需领会：drizzle 有同步适配，我们直接用原生 drizzle + async 即可）
 
 **验收标准**
 
 - [ ] 进程重启后数据还在
 - [ ] 新表变更走 migration 而非删库重来
 
-### W4 · SolidJS + opentui
+### W4 · 终端 UI 基础（1 周，自制版）
 
-**学什么（Solid 核心 5 个概念）**
+> 目标：先不做复杂 TUI，但要做"会话渲染"的场所。最终 M5 用自制极简 TUI；W4 先热身。
 
-1. `createSignal` / `createMemo`（原子级响应式）
-2. `createEffect`（自动追踪）
-3. `For` / `Show` 控制流
-4. 上下文（`createContext`）+ 自定义渲染（opentui 场景不直接跑浏览器 DOM）
-5. opentui 组件模型：`App`、`List`、`TextInput`、Keymap、主题 system
+**学什么**
+
+1. Node/terminal：`process.stdin.setRawMode(true)`、`readline`、ANSI 转义（`\x1b[2K` 清行、光标控制）
+2. 渲染思路：全帧重绘 vs 增量绘制；`process.stdout.write` 原子的清屏刷新
+3. 组件化思想：把"输入行/消息块/按钮"想象成纯函数 `(state) => screen`
+4. （阅读参考，不写）`sourceCode/packages/tui/src/app.tsx` 的**状态与事件组织**——看它怎么把 1 个 app 拆成 context/组件，这是架构思想不是框架语法
 
 **练手产出**
 
-- opentui 小程序：一个列表 + 底部输入框，方向键选中、回车打印到"日志面板"
-- Solid 响应式完成：输入每击键刷新"预览面板"
-
-**读源码**
-
-- `sourceCode/packages/tui/src/app.tsx`（应用骨架）
-- `sourceCode/packages/tui/src/component/`（先读 list.tsx / chat.tsx 两个）
-- opentui 官方 demos（同目录 `node_modules` 不可用时看仓库里 `packages/tui/tsconfig.json` 引用）
+- 自制 chat 会话 DEMO：raw mode 输入行 + 回车追加到消息列表 + 上下翻页（纯 ANSI，约 150 行）
+- 画一个"选择菜单"（y/n/上下键），比 opentui 更透明地理解终端状态机
 
 **验收标准**
 
-- [ ] 键盘导航 + 焦点管理 OK
-- [ ] 能解释 opentui 的"虚拟 DOM→终端渲染"管线（比照 Solid 的机制）
+- [ ] 输入不 echo、Ctrl+C 不崩溃、渲染无闪烁残影
+- [ ] 能画出最小"对话流 + 输入框"基础骨架（M5 直接复用）
 
 ---
 
@@ -158,7 +147,7 @@ my-cli ask "你好"
 
 **目标**：`my-cli ask "你好"` 真正连上 LLM，流式输出文字。
 
-**顺序**：schema(配置结构) → 配置加载 → provider 服务 → LLM 流接口 → CLI 命令
+**顺序**：结构定义(配置) → 配置加载 → provider 实现 → LLM 流接口 → CLI 命令
 
 **读源码**
 
@@ -170,8 +159,8 @@ my-cli ask "你好"
 
 **写代码**
 
-1. `Config` Schema：provider/model + 自定义 baseURL + 环境变量
-2. `ProviderService`：`Context.Tag` + 两个实现（openai-compatible / anthropic）
+1. `Config` 结构定义：provider/model + 自定义 baseURL + 环境变量
+2. `Provider` 接口：两个实现（openai-compatible / anthropic），工厂按 config 返回
 3. `LLMService.stream()`：用 AI SDK `streamText` 打印增量 token
 
 **验收标准**
@@ -232,7 +221,7 @@ my-cli ask "你好"
 
 **读源码**
 
-- `packages/opencode/src/server/server.ts`（effect HttpServer 组装）
+- `packages/opencode/src/server/server.ts`（注意：源码用 Effect 的 HttpServer——读时**抽离路由组织方式**，我们的实现用 Bun/Node 原生 `http` + SSE 即可）
 - `packages/opencode/src/server/routes/`（路由结构：session/message/permission）
 - `packages/protocol/`（请求/响应契约）
 
@@ -248,25 +237,25 @@ my-cli ask "你好"
 - [ ] 用 curl 能完成一轮对话（含流式）
 - [ ] Server 与 core 分离：TUI 的所有数据只从 HTTP 拿
 
-### M5 · TUI（2.5~3 周，最⻓但成就感最大）
+### M5 · TUI（2~2.5 周，极简自制版）
 
-**目标**：纯键盘聊天的完整终端体验。
+**目标**：纯键盘聊天的完整终端体验（自制 TUI：raw mode + ANSI，不引 opentui/Solid）。
 
-**读源码（每写一个组件前读一个）**
+#### 先读源码（看架构 NOT 框架语法）
 
 - `tui/src/app.tsx`（壳：应用启动、快捷键路由）
 - `tui/src/component/chat.tsx`（消息流列表）
-- `tui/src/component/`（text input / 菜单 / 权限弹窗类似物）
 - `tui/src/context/`（状态容器、主题）
+> ⚠️ 读源码时的抽取原则：opentui/Solid 的组件写法（`For`/`createEffect`）不看，**重点看**：① 应用状态如何切分 ② 事件如何流转到渲染 ③ 组件把什么抽象成 props
 
 **写代码（组件迭代顺序）**
 
-1. Shell + 消息列表渲染（静态）
-2. SSE 文本增量 → 逐帧刷新（节流到 ~10fps 保证不闪屏）
-3. 输入行 + 多行粘贴 + Enter/Ctrl+C 处理
-4. 权限 ask 弹窗（上下键选择 + vim 键位）
-5. 快捷键：`/help` 斜杠命令、Tab 切换 agent（可后置）
-6. 主题化（配色/边框风格参数化）
+1. Terminal 生命线封装：`setRawMode` + 键事件流 + `ctrl+c`/resize 处理（~100 行）
+2. Shell + 消息列表渲染（静态，全帧重绘）
+3. SSE 文本增量 → 增量重绘（只刷消息区）
+4. 输入行 + 多行粘贴 + Enter/Ctrl+C 处理
+5. 权限 ask 弹窗（上下键选择 + vim 键位）
+6. 快捷键：`/help` 斜杠命令（可后置）
 
 **验收标准**
 
@@ -342,7 +331,7 @@ my-cli ask "你好"
 ### 学习优先级（文件阅读金字塔）
 
 ```
-specs/v2/*.md + client/AGENTS.md + CONTEXT.md   ← 为什么这样设计（先读）
+specs/v2/*.md + sourceCode/AGENTS.md + CONTEXT.md  ← 为什么这样设计（先读）
 packages/core/src/ (session/tool/permission)    ← 机制本体
 packages/opencode/src/ (server/cli)             ← 组装与入口
 packages/tui/src/ + packages/llm/               ← 表现与边缘
@@ -352,16 +341,30 @@ packages/tui/src/ + packages/llm/               ← 表现与边缘
 
 - 根目录跑 `bun test` 会报 `do-not-run-tests-from-root`（guard 配置于 `bunfig.toml`）
 - 不要直接 `tsc`，统一 `tsgo --noEmit`（性能与行为差异大）
-- Effect 里禁止 `import * as Foo`，用命名导入 + `namespace` 用途按需
+- 读源码注意：Effect 版代码里禁止 `import * as Foo`，用命名导入 + `namespace` 用途按需（这是它的规范，不是通用建议）
 - 权限默认 **deny**（安全优先），别学 demo 全 allow
 - 工具输出做 token 预算（截断/落盘），这是"长期能用"与"demo 级"的分水岭
 
 ---
 
-## 4. 总时间线一览
+## 4. 同类项目对照（架构参考）
+
+| | opencode（本路线主参考） | deepseek-harness（`dsh`） |
+|---|---|---|
+| 类型 | AI 编程代理 CLI + 桌面 | AI 编程代理 CLI + Web UI |
+| 语言/运行时 | TypeScript + Bun | TypeScript + Node 22 / pnpm |
+| 底层范式 | **Effect 4**（类型化函数式 DI） | **Cordis 插件容器**（"Everything is a Plugin"） |
+| 界面 | opentui 终端 UI + Electron | 内置 Web UI（`dsh web`） |
+| 学习价值 | 架构完整、注重新会议/工具/权限/上下文设计 | 插件化设计（M7 灵感来源） |
+
+**对简化实现的启示**：两套同类工具选择了完全不同的底层（Effect 重类型 vs Cordis 轻装配），同样的"agent loop + 工具 + 会话 + 权限"核心——再次证明**架构思想与框架选型无关**。dsh 的代码可在 M3/M7 时按需参考，前期不深读。
+
+---
+
+## 5. 总时间线一览
 
 ```text
-W1-4  技术预热           B/TS CLI · Effect · Drizzle · Solid/opentui
+W1-4  技术预热           B/TS CLI · Effect速读 · Drizzle · 自制TUI基础
 W5-6   M1-M2             配置+问答 · 会话持久化
 W7-9   M3 工具+权限+循环  （核心，可再加 1 周）
 W10-11 M4-M5 服务化+TUI  TUI 可从 M4 并行开始
