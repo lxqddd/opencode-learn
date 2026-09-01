@@ -8,7 +8,8 @@
     "typecheck": "tsgo --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./llm": "./src/llm/index.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "catalog:",

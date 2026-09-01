@@ -4,6 +4,8 @@ import { Config } from "@my/core"
 import { ask } from "./cmd/ask"
 import { config } from "./cmd/config"
 
+await Config.loadDotEnv()
+
 yargs(hideBin(process.argv))
   .scriptName("my-cli")
   .command(

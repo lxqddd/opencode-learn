@@ -5,6 +5,7 @@ export type Config = {
   provider: string
   model: string
   temperature: number
+  baseURL?: string
   apiKey?: string
 }
 
@@ -21,6 +22,36 @@ export interface ConfigLoader {
   readonly sourcePath?: string
 }
 
+const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined)
+
+export async function loadDotEnv(env: Record<string, string | undefined> = process.env): Promise<boolean> {
+  let dir = process.cwd()
+  while (true) {
+    const candidate = join(dir, ".env")
+    if (await Bun.file(candidate).exists()) {
+      const text = await Bun.file(candidate).text()
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim()
+        if (!trimmed || trimmed.startsWith("#")) continue
+        const eq = trimmed.indexOf("=")
+        if (eq === -1) continue
+        const key = trimmed.slice(0, eq).trim()
+        let value = trimmed.slice(eq + 1).trim()
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1)
+        }
+        if (env[key] === undefined) env[key] = value
+      }
+      return true
+    }
+    if (dir === homedir()) break
+    const parent = join(dir, "..")
+    if (parent === dir) break
+    dir = parent
+  }
+  return false
+}
+
 export class FileConfigLoader implements ConfigLoader {
   constructor(
     private fs = Bun.file,
@@ -34,9 +65,10 @@ export class FileConfigLoader implements ConfigLoader {
     try {
       const raw = (await this.fs(path).json()) as Record<string, unknown>
       return {
-        provider: typeof raw.provider === "string" ? raw.provider : undefined,
-        model: typeof raw.model === "string" ? raw.model : undefined,
-        apiKey: typeof raw.apiKey === "string" ? raw.apiKey : undefined,
+        provider: str(raw.provider),
+        model: str(raw.model),
+        baseURL: str(raw.baseURL),
+        apiKey: str(raw.apiKey),
         temperature: typeof raw.temperature === "number" ? raw.temperature : undefined,
       }
     } catch (error) {
@@ -63,7 +95,7 @@ export class FileConfigLoader implements ConfigLoader {
   }
 
   private fromEnv(): Overrides {
-    return { apiKey: this.env.OPENAI_API_KEY }
+    return { apiKey: this.env.OPENAI_API_KEY, baseURL: this.env.OPENAI_BASE_URL }
   }
 
   async resolve(overrides: Overrides = {}): Promise<Config> {
