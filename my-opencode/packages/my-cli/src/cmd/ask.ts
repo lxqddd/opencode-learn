@@ -1,9 +1,6 @@
 import { Config } from "@my/core"
 import { ChatError } from "@my/core/llm"
-import { createDb } from "@my/core/db"
-import { migrate } from "@my/core/db/migrate"
-import { SqliteSessionRepository } from "@my/core/db/session-repository"
-import { SessionService } from "@my/core/session"
+import { createApp } from "@my/core/app"
 
 export const ask = async (
   overrides: Partial<Config.Overrides> = {},
@@ -11,15 +8,13 @@ export const ask = async (
   opts: { resume?: string } = {},
 ) => {
   const c = await Config.configLoader.resolve(overrides)
-  const db = createDb()
-  await migrate(db)
-  const service = new SessionService(Config.configLoader, new SqliteSessionRepository(db))
+  const app = await createApp()
   console.log(`using: ${c.provider}/${c.model}${opts.resume ? ` (resume ${opts.resume})` : ""}`)
   try {
-    for await (const token of service.promptStream({ prompt, resume: opts.resume })) {
+    for await (const token of app.session.promptStream({ prompt, resume: opts.resume })) {
       process.stdout.write(token)
     }
-    console.log(`\nsession: ${service.sessionId}`)
+    console.log(`\nsession: ${app.session.sessionId}`)
   } catch (error) {
     if (error instanceof ChatError) {
       const hints: Record<string, string> = {

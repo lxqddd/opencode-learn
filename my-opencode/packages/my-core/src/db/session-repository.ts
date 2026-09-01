@@ -1,7 +1,9 @@
 import { asc, desc, eq } from "drizzle-orm"
-import { ulid } from "ulid"
+import { monotonicFactory } from "ulid"
 import type { DrizzleDb } from "./client"
 import { MessageTable, SessionTable, type MessageRole } from "./schema"
+
+const ulid = monotonicFactory()
 
 export type Session = {
   id: string
@@ -28,6 +30,7 @@ export interface SessionRepository {
   findByDirectory(directory: string): Promise<Session | undefined>
   appendMessage(input: { session_id: string; role: MessageRole; content: string }): Promise<Message>
   messages(sessionId: string): Promise<Message[]>
+  deleteMessage(id: string): Promise<void>
   deleteSession(id: string): Promise<void>
 }
 
@@ -80,6 +83,10 @@ export class SqliteSessionRepository implements SessionRepository {
       .where(eq(MessageTable.session_id, sessionId))
       .orderBy(asc(MessageTable.time_created))
     return rows as unknown as Message[]
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await this.db.delete(MessageTable).where(eq(MessageTable.id, id))
   }
 
   async deleteSession(id: string): Promise<void> {

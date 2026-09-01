@@ -1,20 +1,16 @@
-import { Config } from "@my/core"
-import { createDb } from "@my/core/db"
-import { migrate } from "@my/core/db/migrate"
-import { SqliteSessionRepository } from "@my/core/db/session-repository"
-import { SessionService } from "@my/core/session"
+import { createApp } from "@my/core/app"
 
 export const sessionList = async () => {
-  const db = createDb()
-  await migrate(db)
-  const repo = new SqliteSessionRepository(db)
-  const sessions = await new SessionService(Config.configLoader, repo).list()
+  const app = await createApp()
+  const sessions = await app.session.list()
   if (sessions.length === 0) {
     console.log("(no sessions yet)")
     return
   }
   for (const s of sessions) {
-    console.log(`${s.id}  ${s.model ?? "?"}  ${s.time_created && new Date(s.time_created).toLocaleString()}  ${s.directory}`)
+    console.log(
+      `${s.id}  ${s.model ?? "?"}  ${s.time_created && new Date(s.time_created).toLocaleString()}  ${s.directory}`,
+    )
     console.log(`   title: ${s.title ?? ""}`)
   }
 }

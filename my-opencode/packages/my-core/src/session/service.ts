@@ -1,5 +1,5 @@
 import { realpathSync } from "node:fs"
-import type { ConfigLoader } from "../config"
+import type { Config, ConfigLoader } from "../config"
 import type { Session, SessionRepository } from "../db/session-repository"
 import type { MessageRole } from "../db/schema"
 import { ChatError, type ChatMessage, streamChat } from "../llm"
@@ -20,10 +20,16 @@ export interface PromptInput {
   directory?: string
 }
 
+export type LLMStreamFn = (
+  config: Config,
+  messages: ChatMessage[],
+) => AsyncGenerator<string, void, unknown>
+
 export class SessionService {
   constructor(
     private configLoader: ConfigLoader,
     private repo: SessionRepository,
+    private stream: LLMStreamFn = streamChat,
   ) {}
 
   private async resolveSession(input: PromptInput): Promise<Session> {
@@ -46,7 +52,11 @@ export class SessionService {
   async *promptStream(input: PromptInput): AsyncGenerator<string, void, unknown> {
     const config = await this.configLoader.resolve()
     const session = await this.resolveSession(input)
-    await this.repo.appendMessage({ session_id: session.id, role: "user", content: input.prompt })
+    const userMsg = await this.repo.appendMessage({
+      session_id: session.id,
+      role: "user",
+      content: input.prompt,
+    })
 
     const history = await this.repo.messages(session.id)
     const messages: ChatMessage[] = history.map((m) => ({
@@ -56,15 +66,19 @@ export class SessionService {
 
     let full = ""
     try {
-      for await (const token of streamChat(config, messages)) {
+      for await (const token of this.stream(config, messages)) {
         full += token
         yield token
       }
     } catch (error) {
+      await this.repo.deleteMessage(userMsg.id)
       if (error instanceof ChatError) throw error
       throw new ChatError("request-failed", error instanceof Error ? error.message : String(error))
     }
-    if (!full) throw new ChatError("request-failed", "empty assistant response")
+    if (!full) {
+      await this.repo.deleteMessage(userMsg.id)
+      throw new ChatError("request-failed", "empty assistant response")
+    }
 
     await this.repo.appendMessage({ session_id: session.id, role: "assistant", content: full })
     this.sessionId = session.id
