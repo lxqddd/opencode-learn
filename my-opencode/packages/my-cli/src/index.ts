@@ -15,8 +15,8 @@ yargs(hideBin(process.argv))
         .option("provider", { type: "string", describe: "provider to use" })
         .option("model", { type: "string", describe: "model to use" }),
     async (args) => {
-      const c = await Config.resolveConfig({ provider: args.provider, model: args.model })
-      await ask(c, args.prompt)
+      const overrides = { provider: args.provider, model: args.model }
+      await ask(overrides, args.prompt)
     },
   )
   .command(

@@ -1,22 +1,14 @@
 import { join } from "node:path"
 import { homedir } from "node:os"
-import { Effect, Option, Schema } from "effect"
 
-export const OverridesSchema = Schema.Struct({
-  provider: Schema.optional(Schema.String),
-  model: Schema.optional(Schema.String),
-  apiKey: Schema.optional(Schema.String),
-  temperature: Schema.optional(Schema.Number),
-})
-export type Overrides = Schema.Schema.Type<typeof OverridesSchema>
+export type Config = {
+  provider: string
+  model: string
+  temperature: number
+  apiKey?: string
+}
 
-export const ConfigSchema = Schema.Struct({
-  provider: Schema.String,
-  model: Schema.String,
-  temperature: Schema.Number,
-  apiKey: Schema.optional(Schema.String),
-})
-export type Config = Schema.Schema.Type<typeof ConfigSchema>
+export type Overrides = Partial<Config>
 
 export const defaults: Config = {
   provider: "openai",
@@ -24,43 +16,67 @@ export const defaults: Config = {
   temperature: 0.7,
 }
 
-const fromFile = (path: string): Effect.Effect<Overrides> =>
-  Effect.gen(function* () {
-    const exists = yield* Effect.promise(() => Bun.file(path).exists())
-    if (!exists) return {} as Overrides
-    const raw: unknown = yield* Effect.promise(() => Bun.file(path).json())
-    const decoded = Schema.decodeUnknownOption(OverridesSchema)(raw)
-    return Option.getOrElse(decoded, () => ({} as Overrides))
-  })
+export interface ConfigLoader {
+  resolve(overrides?: Overrides): Promise<Config>
+  readonly sourcePath?: string
+}
 
-export async function findFileConfig(): Promise<{ path?: string; config: Overrides }> {
-  const globalPath = join(homedir(), ".config/my-cli/opencode.json")
-  let dir = process.cwd()
-  while (true) {
-    const candidate = join(dir, "opencode.json")
-    if (await Bun.file(candidate).exists()) {
-      return { path: candidate, config: await Effect.runPromise(fromFile(candidate)) }
+export class FileConfigLoader implements ConfigLoader {
+  constructor(
+    private fs = Bun.file,
+    private env: Record<string, string | undefined> = Bun.env,
+  ) {}
+
+  sourcePath?: string
+
+  private async fromFile(path: string): Promise<Overrides> {
+    if (!(await this.fs(path).exists())) return {}
+    try {
+      const raw = (await this.fs(path).json()) as Record<string, unknown>
+      return {
+        provider: typeof raw.provider === "string" ? raw.provider : undefined,
+        model: typeof raw.model === "string" ? raw.model : undefined,
+        apiKey: typeof raw.apiKey === "string" ? raw.apiKey : undefined,
+        temperature: typeof raw.temperature === "number" ? raw.temperature : undefined,
+      }
+    } catch (error) {
+      console.warn(`invalid config at ${path}: ${error}`)
+      return {}
     }
-    if (dir === homedir()) break
-    const parent = join(dir, "..")
-    if (parent === dir) break
-    dir = parent
   }
-  const global = await Effect.runPromise(fromFile(globalPath))
-  return { path: globalPath, config: global }
+
+  private async findFileConfig(): Promise<{ path?: string; config: Overrides }> {
+    const globalPath = join(homedir(), ".config/my-cli/opencode.json")
+    let dir = process.cwd()
+    while (true) {
+      const candidate = join(dir, "opencode.json")
+      if (await this.fs(candidate).exists()) {
+        return { path: candidate, config: await this.fromFile(candidate) }
+      }
+      if (dir === homedir()) break
+      const parent = join(dir, "..")
+      if (parent === dir) break
+      dir = parent
+    }
+    const global = await this.fromFile(globalPath)
+    return { path: globalPath, config: global }
+  }
+
+  private fromEnv(): Overrides {
+    return { apiKey: this.env.OPENAI_API_KEY }
+  }
+
+  async resolve(overrides: Overrides = {}): Promise<Config> {
+    const found = await this.findFileConfig()
+    this.sourcePath = found.path
+    const defined = Object.fromEntries(
+      Object.entries(overrides).filter(([, value]) => value !== undefined),
+    ) as Overrides
+    return { ...defaults, ...found.config, ...this.fromEnv(), ...defined }
+  }
 }
 
-export function fromEnv(): Overrides {
-  return { apiKey: Bun.env.OPENAI_API_KEY }
-}
-
-export async function resolveConfig(overrides: Overrides = {}): Promise<Config> {
-  const found = await findFileConfig()
-  const defined = Object.fromEntries(
-    Object.entries(overrides).filter(([, value]) => value !== undefined),
-  ) as Overrides
-  return { ...defaults, ...found.config, ...fromEnv(), ...defined }
-}
+export const configLoader: ConfigLoader = new FileConfigLoader()
 
 export function maskKey(key?: string): string | undefined {
   if (!key) return undefined

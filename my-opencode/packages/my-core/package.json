@@ -11,7 +11,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "effect": "catalog:"
+    "@ai-sdk/openai-compatible": "catalog:",
+    "ai": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
