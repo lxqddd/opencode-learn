@@ -1,7 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm"
 import { ulid } from "ulid"
 import type { DrizzleDb } from "./client"
-import { MessageTable, SessionTable } from "./schema"
+import { MessageTable, SessionTable, type MessageRole } from "./schema"
 
 export type Session = {
   id: string
@@ -15,7 +15,7 @@ export type Session = {
 export type Message = {
   id: string
   session_id: string
-  role: string
+  role: MessageRole
   content: string
   time_created: number
   time_updated: number
@@ -26,7 +26,7 @@ export interface SessionRepository {
   get(id: string): Promise<Session | undefined>
   list(): Promise<Session[]>
   findByDirectory(directory: string): Promise<Session | undefined>
-  appendMessage(input: { session_id: string; role: string; content: string }): Promise<Message>
+  appendMessage(input: { session_id: string; role: MessageRole; content: string }): Promise<Message>
   messages(sessionId: string): Promise<Message[]>
   deleteSession(id: string): Promise<void>
 }
@@ -65,7 +65,7 @@ export class SqliteSessionRepository implements SessionRepository {
     return row as unknown as Session | undefined
   }
 
-  async appendMessage(input: { session_id: string; role: string; content: string }): Promise<Message> {
+  async appendMessage(input: { session_id: string; role: MessageRole; content: string }): Promise<Message> {
     const [row] = await this.db
       .insert(MessageTable)
       .values({ id: ulid(), session_id: input.session_id, role: input.role, content: input.content })

@@ -11,6 +11,7 @@
     ".": "./src/index.ts",
     "./llm": "./src/llm/index.ts",
     "./db": "./src/db/client.ts",
+    "./db/migrate": "./src/db/migrate.ts",
     "./db/session-repository": "./src/db/session-repository.ts",
     "./session": "./src/session/service.ts"
   },

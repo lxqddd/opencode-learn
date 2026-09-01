@@ -1,5 +1,7 @@
 import { integer, index, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
+export type MessageRole = "user" | "assistant" | "tool"
+
 export const Timestamps = {
   time_created: integer()
     .notNull()
@@ -24,7 +26,7 @@ export const MessageTable = sqliteTable(
     session_id: text()
       .notNull()
       .references(() => SessionTable.id, { onDelete: "cascade" }),
-    role: text().notNull(),
+    role: text().$type<MessageRole>().notNull(),
     content: text().notNull(),
     ...Timestamps,
   },

@@ -1,9 +1,14 @@
-import { describe, expect, it } from "bun:test"
+import { beforeAll, describe, expect, it } from "bun:test"
 import { createDb } from "../src/db/client"
+import { migrate } from "../src/db/migrate"
 import { SqliteSessionRepository } from "../src/db/session-repository"
 
 describe("SqliteSessionRepository", () => {
-  const repo = new SqliteSessionRepository(createDb(":memory:"))
+  const db = createDb(":memory:")
+  beforeAll(async () => {
+    await migrate(db)
+  })
+  const repo = new SqliteSessionRepository(db)
 
   it("creates and gets a session", async () => {
     const s = await repo.create({ directory: "/tmp/project", title: "hello" })

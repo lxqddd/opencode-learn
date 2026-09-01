@@ -1,7 +1,18 @@
 import { realpathSync } from "node:fs"
 import type { ConfigLoader } from "../config"
 import type { Session, SessionRepository } from "../db/session-repository"
+import type { MessageRole } from "../db/schema"
 import { ChatError, type ChatMessage, streamChat } from "../llm"
+
+export const toChatRole = (role: MessageRole): ChatMessage["role"] => {
+  switch (role) {
+    case "user":
+    case "assistant":
+      return role
+    case "tool":
+      throw new ChatError("request-failed", "tool messages cannot enter chat history yet (M3)")
+  }
+}
 
 export interface PromptInput {
   prompt: string
@@ -39,7 +50,7 @@ export class SessionService {
 
     const history = await this.repo.messages(session.id)
     const messages: ChatMessage[] = history.map((m) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
+      role: toChatRole(m.role),
       content: m.content,
     }))
 

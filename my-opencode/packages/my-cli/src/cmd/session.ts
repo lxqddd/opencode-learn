@@ -1,10 +1,13 @@
 import { Config } from "@my/core"
 import { createDb } from "@my/core/db"
+import { migrate } from "@my/core/db/migrate"
 import { SqliteSessionRepository } from "@my/core/db/session-repository"
 import { SessionService } from "@my/core/session"
 
 export const sessionList = async () => {
-  const repo = new SqliteSessionRepository(createDb())
+  const db = createDb()
+  await migrate(db)
+  const repo = new SqliteSessionRepository(db)
   const sessions = await new SessionService(Config.configLoader, repo).list()
   if (sessions.length === 0) {
     console.log("(no sessions yet)")
