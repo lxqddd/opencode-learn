@@ -32,6 +32,14 @@ export const migrations: Migration[] = [
         ON message(session_id, time_created)`,
     ],
   },
+  {
+    version: 2,
+    name: "add-tool-message-fields",
+    statements: [
+      `ALTER TABLE message ADD COLUMN tool_calls text`,
+      `ALTER TABLE message ADD COLUMN tool_call_id text`,
+    ],
+  },
 ]
 
 async function appliedVersions(db: DrizzleDb): Promise<Set<number>> {

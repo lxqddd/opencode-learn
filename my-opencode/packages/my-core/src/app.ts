@@ -22,9 +22,9 @@ export async function createApp(opts: { dbPath?: string; ask?: AskFn } = {}): Pr
   const db = createDb(opts.dbPath)
   await migrate(db)
   const repo = new SqliteSessionRepository(db)
-  const session = new SessionService(configLoader, repo)
   const tools = new ToolRegistry()
   registerBuiltins(tools)
   const permission = new PermissionService(opts.ask ?? rejectAll)
+  const session = new SessionService(configLoader, repo, tools, permission)
   return { db, configLoader, repo, session, tools, permission }
 }

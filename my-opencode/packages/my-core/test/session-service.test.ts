@@ -1,32 +1,28 @@
-import { beforeAll, describe, expect, it } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { createDb } from "../src/db/client"
 import { migrate } from "../src/db/migrate"
 import { SqliteSessionRepository } from "../src/db/session-repository"
-import { ChatError, type ChatMessage } from "../src/llm"
-import { SessionService, type LLMStreamFn } from "../src/session/service"
+import { ChatError } from "../src/llm"
+import { PermissionService, type AskFn } from "../src/permission/service"
+import { SessionService, type LoopStreamFn } from "../src/session/service"
+import { ToolRegistry } from "../src/tool/registry"
 
 const fakeConfig = { provider: "openai", model: "gpt-4o", temperature: 0.7 }
+const allowAll: AskFn = async () => "once"
 
-async function makeService(stream: LLMStreamFn) {
+async function makeService(stream: LoopStreamFn) {
   const db = createDb(":memory:")
   await migrate(db)
   const repo = new SqliteSessionRepository(db)
   const configLoader = { resolve: async () => fakeConfig }
-  return { service: new SessionService(configLoader, repo, stream), repo }
+  const service = new SessionService(configLoader, repo, new ToolRegistry(), new PermissionService(allowAll), stream)
+  return { service, repo }
 }
 
-describe("SessionService.promptStream", () => {
-  const db = createDb(":memory:")
-  beforeAll(async () => {
-    await migrate(db)
-  })
-  const repo = new SqliteSessionRepository(db)
-  const configLoader = { resolve: async () => fakeConfig }
-
+describe("SessionService.promptStream basics", () => {
   it("persists user + assistant on success", async () => {
-    const service = new SessionService(configLoader, repo, async function* () {
-      yield "hello"
-      yield " world"
+    const { service, repo } = await makeService(async function* () {
+      yield { type: "text", text: "hello world" }
     })
     const parts: string[] = []
     for await (const t of service.promptStream({ prompt: "hi" })) parts.push(t)
@@ -37,29 +33,28 @@ describe("SessionService.promptStream", () => {
   })
 
   it("rolls back the user message when the stream fails", async () => {
-    const stream: LLMStreamFn = async function* () {
+    const { service, repo } = await makeService(async function* () {
       throw new ChatError("request-failed", "boom")
-    }
-    const make = await makeService(stream)
+    })
     const drain = async () => {
-      for await (const t of make.service.promptStream({ prompt: "hi" })) void t
+      for await (const t of service.promptStream({ prompt: "hi" })) void t
     }
     await expect(drain()).rejects.toThrow()
-    const any = await make.repo.list()
+    const any = await repo.list()
     for (const s of any) {
-      expect(await make.repo.messages(s.id)).toHaveLength(0)
+      expect(await repo.messages(s.id)).toHaveLength(0)
     }
   })
 
   it("rolls back on empty assistant response", async () => {
-    const make = await makeService(async function* () {})
+    const { service, repo } = await makeService(async function* () {})
     const drain = async () => {
-      for await (const t of make.service.promptStream({ prompt: "hi" })) void t
+      for await (const t of service.promptStream({ prompt: "hi" })) void t
     }
     await expect(drain()).rejects.toThrow()
-    const any = await make.repo.list()
+    const any = await repo.list()
     for (const s of any) {
-      expect(await make.repo.messages(s.id)).toHaveLength(0)
+      expect(await repo.messages(s.id)).toHaveLength(0)
     }
   })
 })

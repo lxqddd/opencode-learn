@@ -28,6 +28,8 @@ export const MessageTable = sqliteTable(
       .references(() => SessionTable.id, { onDelete: "cascade" }),
     role: text().$type<MessageRole>().notNull(),
     content: text().notNull(),
+    tool_calls: text(),
+    tool_call_id: text(),
     ...Timestamps,
   },
   (table) => [index("message_session_created_idx").on(table.session_id, table.time_created)],

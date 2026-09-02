@@ -13,7 +13,7 @@ describe("migrate", () => {
   it("creates tables on a fresh db and records versions", async () => {
     const db = createDb(":memory:")
     const applied = await migrate(db)
-    expect(applied).toBe(1)
+    expect(applied).toBe(2)
     const tables = tableNames(db)
     expect(tables).toContain("session")
     expect(tables).toContain("message")
@@ -22,9 +22,9 @@ describe("migrate", () => {
       version: number
       name: string
     }>
-    expect(rows.length).toBe(1)
-    expect(rows[0]?.version).toBe(1)
+    expect(rows.map((r) => r.version)).toEqual([1, 2])
     expect(rows[0]?.name).toBe("init-session-message")
+    expect(rows[1]?.name).toBe("add-tool-message-fields")
   })
 
   it("is idempotent: second run applies nothing", async () => {
@@ -34,13 +34,14 @@ describe("migrate", () => {
     expect(again).toBe(0)
   })
 
-  it("defensively tolerates pre-existing legacy tables", async () => {
+  it("upgrades an M2-era db with message table but no tool columns", async () => {
     const db = createDb(":memory:")
-    db.$client.exec(`CREATE TABLE session (id text PRIMARY KEY, directory text NOT NULL)`)
+    db.$client.exec(`CREATE TABLE session (id text PRIMARY KEY, directory text NOT NULL, title text, model text, time_created integer NOT NULL, time_updated integer NOT NULL)`)
+    db.$client.exec(`CREATE TABLE message (id text PRIMARY KEY, session_id text NOT NULL, role text NOT NULL, content text NOT NULL, time_created integer NOT NULL, time_updated integer NOT NULL)`)
     const applied = await migrate(db)
-    expect(applied).toBe(1)
-    const tables = tableNames(db)
-    expect(tables).toContain("message")
-    expect(tables).not.toContain("session_legacy")
+    expect(applied).toBe(2)
+    const cols = db.$client.query("PRAGMA table_info(message)").all() as Array<{ name: string }>
+    expect(cols.map((c) => c.name)).toContain("tool_calls")
+    expect(cols.map((c) => c.name)).toContain("tool_call_id")
   })
 })

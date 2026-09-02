@@ -33,6 +33,14 @@ function prefixOf(tool: string, resource: string): string {
   return resource
 }
 
+export function pickResource(tool: string, input: unknown): string {
+  const args = (input ?? {}) as Record<string, unknown>
+  if (tool === "bash" && typeof args.command === "string") return args.command
+  if (typeof args.path === "string") return args.path
+  if (typeof args.pattern === "string") return args.pattern
+  return JSON.stringify(args).slice(0, 200)
+}
+
 export class PermissionService {
   private rules: PermissionRule[] = []
 

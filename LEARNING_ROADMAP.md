@@ -214,9 +214,10 @@ my-cli ask "你好"
 
 **验收标准**
 
-- [ ] 中文指令："看一下 xx 文件，说出行数" 能自动 read+grep
-- [ ] 权限 ask 弹窗可拒绝，拒绝后 agent 能调整继续
-- [ ] bash 输出超 10KB 被截断/落盘
+- [x] 中文指令："看一下 xx 文件，说出行数" 能自动 read+grep（实测 MiniMax-M3 读文件答 59 行）
+- [x] 权限 ask 弹窗可拒绝，拒绝后 agent 能调整继续（拒绝文本喂回模型，测试锁定）
+- [x] bash 输出超 10KB 被截断/落盘
+- [x] 会话完整落库工具消息（v2 迁移 + tool_calls/tool_call_id 列，resume 可重放）
 
 ### M4 · HTTP 服务化（1.5 周）
 

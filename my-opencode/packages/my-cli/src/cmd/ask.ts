@@ -1,6 +1,7 @@
 import { Config } from "@my/core"
 import { ChatError } from "@my/core/llm"
 import { createApp } from "@my/core/app"
+import { cliAsk } from "../permission-cli"
 
 export const ask = async (
   overrides: Partial<Config.Overrides> = {},
@@ -8,7 +9,7 @@ export const ask = async (
   opts: { resume?: string } = {},
 ) => {
   const c = await Config.configLoader.resolve(overrides)
-  const app = await createApp()
+  const app = await createApp({ ask: cliAsk })
   console.log(`using: ${c.provider}/${c.model}${opts.resume ? ` (resume ${opts.resume})` : ""}`)
   try {
     for await (const token of app.session.promptStream({ prompt, resume: opts.resume })) {
