@@ -67,6 +67,24 @@ describe("edit tool", () => {
   })
 })
 
+
+describe("read binary rejection", () => {
+  it("rejects PNG files with model guidance", async () => {
+    const p = join(tmp, "fake.png")
+    writeFileSync(p, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]))
+    const out = await read.execute({ path: p }, { sessionID: "t" })
+    expect(out).toContain("is a png file (binary)")
+    expect(out).toContain("Inform the user")
+  })
+
+  it("rejects generic binary (NUL bytes)", async () => {
+    const p = join(tmp, "data.bin")
+    writeFileSync(p, Buffer.from([0x01, 0x00, 0x02, 0x00]))
+    const out = await read.execute({ path: p }, { sessionID: "t" })
+    expect(out).toContain("binary file")
+  })
+})
+
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true })
 })

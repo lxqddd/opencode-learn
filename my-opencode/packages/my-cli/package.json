@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@my/core": "workspace:*",
-    "effect": "catalog:",
+    "@my/tui": "workspace:*",
     "yargs": "^18.0.0"
   }
 }

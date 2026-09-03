@@ -6,8 +6,14 @@ import { config } from "./cmd/config"
 import { models } from "./cmd/models"
 import { auth } from "./cmd/auth"
 import { sessionList } from "./cmd/session"
+import { tui } from "./cmd/tui"
 
 await Config.loadDotEnv()
+
+if (process.argv[2] === "tui") {
+  await tui()
+  process.exit(0)
+}
 
 yargs(hideBin(process.argv))
   .scriptName("my-cli")
@@ -47,6 +53,15 @@ yargs(hideBin(process.argv))
     (y) => y.option("provider", { type: "string" }).option("model", { type: "string" }),
     async (args) => {
       await auth({ provider: args.provider, model: args.model })
+    },
+  )
+  .command(
+    "tui",
+    "start the terminal UI",
+    () => {},
+    async () => {
+      console.error("my-cli tui must run directly: bun run tui")
+      process.exit(1)
     },
   )
   .command(
